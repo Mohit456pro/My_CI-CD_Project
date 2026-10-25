@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ci_cd_demo_api
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=local
+      - GIT_COMMIT_SHA=local-dev
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/live')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped

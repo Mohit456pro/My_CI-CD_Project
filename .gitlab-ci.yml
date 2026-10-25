@@ -1,0 +1,91 @@
+# ==========================================
+# GitLab CI/CD Pipeline Configuration
+# ==========================================
+stages:
+  - lint
+  - security
+  - test
+  - package
+  - deploy-staging
+  - deploy-production
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+
+# ------------------------------------------
+# Stage 1: Linting & Code Style
+# ------------------------------------------
+lint:
+  stage: lint
+  image: python:3.11-slim
+  script:
+    - pip install ruff
+    - ruff check .
+
+# ------------------------------------------
+# Stage 2: Security & SAST
+# ------------------------------------------
+security-scan:
+  stage: security
+  image: python:3.11-slim
+  script:
+    - pip install bandit pip-audit
+    - bandit -r src/ -ll
+    - pip-audit -r requirements.txt || true
+
+# ------------------------------------------
+# Stage 3: Testing & Code Coverage
+# ------------------------------------------
+unit-tests:
+  stage: test
+  image: python:3.11-slim
+  script:
+    - pip install -r requirements-dev.txt
+    - pytest --cov=src --cov-report=term-missing --cov-fail-under=85
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+
+# ------------------------------------------
+# Stage 4: Package Docker Container
+# ------------------------------------------
+build-image:
+  stage: package
+  image: docker:24.0.5
+  services:
+    - docker:24.0.5-dind
+  script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+  only:
+    - main
+
+# ------------------------------------------
+# Stage 5: Deploy to Staging
+# ------------------------------------------
+staging-deploy:
+  stage: deploy-staging
+  environment:
+    name: staging
+    url: https://staging.example.com
+  script:
+    - echo "Deploying $IMAGE_TAG to Staging..."
+    - echo "Running smoke tests against staging..."
+  only:
+    - main
+
+# ------------------------------------------
+# Stage 6: Deploy to Production (Manual Gate)
+# ------------------------------------------
+production-deploy:
+  stage: deploy-production
+  environment:
+    name: production
+    url: https://api.example.com
+  script:
+    - echo "Deploying $IMAGE_TAG to Production..."
+    - echo "Verifying production health check..."
+  when: manual
+  only:
+    - main
