@@ -1,7 +1,8 @@
 """Main FastAPI application module."""
+
 import os
 import time
-from typing import List
+
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
@@ -16,15 +17,18 @@ app = FastAPI(
 
 START_TIME = time.time()
 
+
 # Request & Response Models
 class OrderItem(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     price: float = Field(..., gt=0)
     quantity: int = Field(..., gt=0)
 
+
 class OrderRequest(BaseModel):
-    items: List[OrderItem]
+    items: list[OrderItem]
     tax_rate: float = Field(default=0.08, ge=0, le=1)
+
 
 class DiscountRequest(BaseModel):
     price: float = Field(..., gt=0)
