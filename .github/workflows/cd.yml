@@ -14,9 +14,13 @@ on:
           - staging
           - production
 
+permissions:
+  contents: read
+  packages: write
+
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: mohit456pro/my_ci-cd_project
 
 jobs:
   # ==========================================
